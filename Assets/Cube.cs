@@ -18,9 +18,9 @@ public class Cube : MonoBehaviour
         _mat = _renderer.material;
     }
 
-    void Update()
+    public void ManualUpdate()
     {
-        CastRays();
+        //CastRays();
         _timeAlive += Time.deltaTime;
 
         if (_timeAlive >= _lifetimeSeconds)
@@ -36,7 +36,13 @@ public class Cube : MonoBehaviour
         if(Physics.Raycast(transform.position, Vector3.back)) hits++;
         if(Physics.Raycast(transform.position, Vector3.left)) hits++;
         if(Physics.Raycast(transform.position, Vector3.right)) hits++;
+        
+        ReactToNeighbours(hits);
 
+    }
+
+    public void ReactToNeighbours(int hits)
+    {
         switch (hits)
         {
             case 0:
@@ -55,7 +61,8 @@ public class Cube : MonoBehaviour
                 _mat.color = Color.yellow;
                 break;
         }
-    }   
+    }
+    
     
     public void SetLifetime(float time)
     {

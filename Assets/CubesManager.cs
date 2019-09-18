@@ -1,12 +1,16 @@
-﻿using System.Collections;
+﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using Random = UnityEngine.Random;
 
 public class CubesManager : MonoBehaviour
 {
     [SerializeField] private GameObject _cubePrefab;
     [SerializeField] private Transform _spawnLocation;
     [SerializeField] private GameObject[] _cubesOnScene;
+    [SerializeField] private Cube[] _cubeControllersOnScene;
+    
     
     private const float _SPAWN_VARIANCE = 25;
     private const float _LIFETIME_MIN = 8.0f;
@@ -18,6 +22,7 @@ public class CubesManager : MonoBehaviour
     private void Awake()
     {
         _cubesOnScene = new GameObject[_MAX_CUBE_COUNT];
+        _cubeControllersOnScene = new Cube[_MAX_CUBE_COUNT];
         Init();
     }
 
@@ -26,7 +31,8 @@ public class CubesManager : MonoBehaviour
         for (var i = 0; i < _cubesOnScene.Length; i++)
         {
             var newCube = SpawnCube();
-            _cubesOnScene[i] = newCube;
+            _cubesOnScene[i] = newCube.Item1;
+            _cubeControllersOnScene[i] = newCube.Item2;
             count++;
         }
     }
@@ -39,9 +45,10 @@ public class CubesManager : MonoBehaviour
             if (_cubesOnScene[i] == null)
             {
                 var newCube = SpawnCube();
-                _cubesOnScene[i] = newCube;
+                _cubesOnScene[i] = newCube.Item1;
+                _cubeControllersOnScene[i] = newCube.Item2;
                 count++;
-                return;
+                continue;
             }
             
             var cube = _cubesOnScene[i].GetComponent<Cube>();
@@ -50,11 +57,17 @@ public class CubesManager : MonoBehaviour
                 Destroy(_cubesOnScene[i]);
                 count--;
             }
+            else
+            {
+                cube.ManualUpdate();
+            }
         }
+        
+        //CastRays();
         
     }
 
-    private GameObject SpawnCube()
+    private Tuple<GameObject, Cube> SpawnCube()
     {
         var x = Random.Range(-_SPAWN_VARIANCE, _SPAWN_VARIANCE);
         var z = Random.Range(-_SPAWN_VARIANCE, _SPAWN_VARIANCE);
@@ -66,6 +79,48 @@ public class CubesManager : MonoBehaviour
         var t = Random.Range(_LIFETIME_MIN, _LIFETIME_MAX);
         cubeController.SetLifetime(t);
 
-        return go;
+        var tuple = new Tuple<GameObject, Cube>(go, cubeController);
+        return tuple;
     }
+
+    private void CastRays()
+    {
+        List<CubePosData> cubePositions = new List<CubePosData>();
+
+        for (int i = 0; i < _cubesOnScene.Length; i++)
+        {
+            if (_cubesOnScene[i] == null) continue;
+            
+            var data = new CubePosData()
+            {
+                Pos = _cubesOnScene[i].transform.position,
+                Id = i
+            };
+            
+            cubePositions.Add(data);
+        }
+
+        var cubePositionsArray = cubePositions.ToArray(); 
+
+        RaycastHit[] disposableBuffer = new RaycastHit[3];
+
+        for (int i = 0; i < cubePositionsArray.Length; i++)
+        {
+            var hits = 0;
+            if (Physics.RaycastNonAlloc(cubePositions[i].Pos, Vector3.forward, disposableBuffer) > 0) hits++;
+            if (Physics.RaycastNonAlloc(cubePositions[i].Pos, Vector3.back, disposableBuffer) > 0) hits++;
+            if (Physics.RaycastNonAlloc(cubePositions[i].Pos, Vector3.left, disposableBuffer) > 0) hits++;
+            if (Physics.RaycastNonAlloc(cubePositions[i].Pos, Vector3.right, disposableBuffer) > 0) hits++;
+
+            _cubeControllersOnScene[cubePositionsArray[i].Id].ReactToNeighbours(hits);
+        }
+    }
+
+    private struct CubePosData
+    {
+        public Vector3 Pos;
+        public int Id;
+        public int Hits;
+    }
+    
 }
