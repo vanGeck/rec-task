@@ -1,4 +1,5 @@
 ﻿using UnityEngine;
+using Vector3 = UnityEngine.Vector3;
 
 /*
  * This is a simple character controller. Requirements are as follows:
@@ -15,6 +16,11 @@
 
 public class ManController : MonoBehaviour
 {
+    [SerializeField] private Camera _cam;
+    [SerializeField] private float _movementSpeed = 1.0f;
+    [SerializeField] private float _movementRunModifier = 1.5f;
+
+    
     private void Update()
     {
         var dir = ReadMovementInput();
@@ -24,16 +30,30 @@ public class ManController : MonoBehaviour
 
     private void TurnTowardsMouse()
     {
-        
+        Ray mouseRay = _cam.ScreenPointToRay(Input.mousePosition);
+        float midPoint = (transform.position - _cam.transform.position).magnitude * 0.5f;
+        var position = mouseRay.origin + mouseRay.direction * midPoint;
+        position.y = transform.position.y;
+        transform.LookAt(position, Vector3.up);
     }
 
     private Vector3 ReadMovementInput()
     {
-        return Vector3.zero;
+        var output = Vector3.zero;
+        if (Input.GetKey(KeyCode.W)) output += Vector3.forward;
+        if (Input.GetKey(KeyCode.S)) output += Vector3.back;
+        if (Input.GetKey(KeyCode.A)) output += Vector3.left;
+        if (Input.GetKey(KeyCode.D)) output += Vector3.right;
+
+        output = output.normalized * _movementSpeed;
+
+        if (Input.GetKey(KeyCode.LeftShift)) output *= _movementRunModifier;
+
+        return output;
     }
 
-    private void Move(Vector3 direction)
+    private void Move(Vector3 movementVector)
     {
-        
+        transform.position += movementVector * Time.deltaTime;
     }
 }
